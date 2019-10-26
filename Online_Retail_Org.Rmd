@@ -1,0 +1,153 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# Load the libraries
+library(arules)
+library(arulesViz)
+library(readxl)
+online <- read_excel('/home/apoorva/MLA_Final/Datasets/Online Retail.xlsx', na = c("", "NA"))
+```
+
+```{r}
+any(is.na(online))
+apply(online, 2, function(x) any(is.na(x)))
+sum(is.na(online$CustomerID))
+sum(is.na(online$Description))
+```
+
+```{r}
+online$InvoiceNo = as.character(online$InvoiceNo)
+trim = function (x) gsub("^\\s+|\\s+$", "", x)
+online$InvoiceNo = trim(online$InvoiceNo)
+online$Description = trim(as.character(online$Description))
+```
+
+```{r}
+is_C = function (x) startsWith(x,"C")
+dataset2 = online[which(!is_C(online$InvoiceNo)),]
+dataset3 = subset(dataset2,!is.na(dataset2$Description))
+```
+
+```{r}
+library(stringr)
+```
+
+```{r}
+isUndesirable2 = function(x) {
+  str_detect(toupper(x),"WRONG") | str_detect(toupper(x),"LOST") |
+    str_detect(toupper(x),"CRUSHED") | str_detect(toupper(x),"DAMAGE") |
+    str_detect(toupper(x),"FOUND") | str_detect(toupper(x),"THROWN") |
+    str_detect(toupper(x),"SMASHED") |
+    str_detect(toupper(x),"\\?") |
+    str_detect(toupper(x),"AWAY") | str_detect(toupper(x),"CHARGES") |
+    str_detect(toupper(x),"FEE") | str_detect(toupper(x),"FAULT")
+  str_detect(toupper(x),"SALES") | str_detect(toupper(x),"ADJUST") |
+    str_detect(toupper(x),"COUNTED") |
+    str_detect(toupper(x),"INCORRECT") |
+    str_detect(toupper(x),"BROKEN") | str_detect(toupper(x),"BARCODE") |
+    str_detect(toupper(x),"RETURNED") |
+    str_detect(toupper(x),"MAILOUT") | str_detect(toupper(x),"DELIVERY") |
+    str_detect(toupper(x),"MIX UP") | str_detect(toupper(x),"MOULDY") |
+    str_detect(toupper(x),"PUT ASIDE") | str_detect(toupper(x),"ERROR") |
+    str_detect(toupper(x),"DESTROYED") | str_detect(toupper(x),"RUSTY")
+}
+```
+
+```{r}
+dataset4 = subset(dataset3, dataset3$Quantity > 0)
+dataset5 = dataset4[which(!isUndesirable2(as.character(dataset4$Description))),]
+Time = format(as.POSIXct(strptime(dataset5$InvoiceDate,"%Y-%m-%d %H:%M",tz="")) ,format = "%H:%M:%S")
+dataset5$InvoiceDate = as.Date(dataset5$InvoiceDate)
+dataset5$Description = as.factor(dataset5$Description)
+```
+
+```{r}
+library(plyr)
+library(arules)
+
+items = ddply(dataset5,c("InvoiceNo"), function(x)paste(x$Description, collapse = ","))
+head(items)
+
+write.csv(dataset5, "Online_Retail.csv", quote = FALSE, row.names = TRUE)
+write.csv(items,"Items_List.csv",quote=FALSE, row.names = TRUE)
+```
+
+```{r}
+#creating the baskets
+baskets = read.transactions("Items_List.csv", format='basket',sep=",")
+summary(baskets)
+```
+
+```{r}
+#generating the rules
+basket_rules = apriori(baskets,parameter = list(sup = 0.005, conf = 0.75))
+basket_rules2 = apriori(baskets,parameter = list(sup = 0.01, conf = 0.7,maxlen=3))
+
+basket_rules = sort(basket_rules, by='lift', decreasing = TRUE)
+basket_rules2 = sort(basket_rules2, by = 'confidence', decreasing = TRUE)
+```
+
+```{r}
+summary(basket_rules)
+inspect(basket_rules[1:10])
+```
+
+```{r}
+#visualizing the obtained rules
+library(arulesViz)
+```
+
+```{r}
+#scatterplot
+plot(basket_rules)
+```
+
+```{r}
+summary(basket_rules2)
+inspect(basket_rules2[1:10])
+```
+
+```{r}
+#graph
+plot(basket_rules2[1:10],method="graph")
+```
+
+
+```{r}
+basket_rules3 = apriori(baskets, parameter=list(supp=0.002,conf = 0.8),
+               appearance = list(default="lhs",rhs="COFFEE"),
+               control = list(verbose=F))
+basket_rules3 = sort(basket_rules3, decreasing=TRUE,by="confidence")
+summary(basket_rules3)
+inspect(basket_rules3[1:5])
+```
+
+```{r}
+plot(basket_rules3[1:5],method="graph")
+```
+
+```{r}
+basket_rules4 = apriori(baskets, parameter=list(supp=0.01,conf = 0.7),
+               appearance = list(default="rhs",lhs="SUGAR"),
+               control = list(verbose=F))
+basket_rules4 = sort(basket_rules4, decreasing=TRUE,by="confidence")
+summary(basket_rules4)
+inspect(basket_rules4)
+```
+
+```{r}
+plot(basket_rules4[1:2],method="graph")
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

@@ -1,0 +1,155 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(datasets)
+data("airquality")
+summary(airquality)
+```
+
+```{r}
+# Impute monthly mean in Ozone
+for (i in 1:nrow(airquality)){
+  if(is.na(airquality[i,"Ozone"])){
+    airquality[i,"Ozone"]<- mean(airquality[which(airquality[,"Month"]==airquality[i,"Month"]),"Ozone"],na.rm = TRUE)
+  }
+# Impute monthly mean in Solar.R
+    if(is.na(airquality[i,"Solar.R"])){
+    airquality[i,"Solar.R"]<- mean(airquality[which(airquality[,"Month"]==airquality[i,"Month"]),"Solar.R"],na.rm = TRUE)
+  }
+  
+}
+#Normalize the dataset so that no particular attribute has more impact on clustering algorithm than others.
+normalize<- function(x){
+  return((x-min(x))/(max(x)-min(x)))
+}
+airquality<- normalize(airquality) # replace contents of dataset with normalized values
+str(airquality)
+```
+
+```{r}
+Y<- airquality[,"Ozone"] # select Target attribute
+X<- airquality[,"Solar.R"] # select Predictor attribute
+
+model1<- lm(Y~X)
+model1 # provides regression line coefficients i.e. slope and y-intercept
+```
+
+```{r}
+plot(Y~X) # scatter plot between X and Y
+abline(model1, col="blue", lwd=3) # add regression line to scatter plot to see relationship between X and Y
+```
+
+```{r}
+TrsumSS <- 0
+TssumSS <- 0
+TrMSE <- 0
+TsMSE <- 0
+p <- 0
+i <- 1
+```
+
+
+```{r}
+for (i in 1:10)
+{
+  p = 15* i
+  TrainingData <- head(airquality,p)
+  lmodel <- lm(Ozone ~ Solar.R+Wind+Temp, data = TrainingData, x = T, y = T)
+  predictY <- predict(lmodel, TrainingData)
+  TestData <- head(airquality, -p)
+  Trerror <- abs(TrainingData$Ozone - predictY)
+  Trsqrerror <- Trerror^2
+  TrsumSS[i]<-sum(Trsqrerror)
+  TrMSE[i]<- mean(Trsqrerror)
+  predictY <- predict(lmodel, TestData)
+  Tserror <- abs(TestData$Ozone - predictY)
+  Tssqrerror <- Tserror^2
+  TssumSS[i] <- sum(Tssqrerror)
+  TsMSE[i] <- mean(Tssqrerror)
+}
+```
+
+```{r}
+#Least squared method
+TrsumSS
+TssumSS
+```
+
+```{r}
+plot(TrsumSS, main="effect of size of training and test error")
+lines(x=TrsumSS, y = NULL, type = "l", col="blue")
+points(TssumSS,pch=10,col="red")
+lines(x=TssumSS, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Training MSE and Testing MSE
+TrMSE
+TsMSE
+```
+
+```{r}
+plot(TrMSE, main="effect of size on training MSE(BLUE) and test MSE(RED)")
+lines(x=TrMSE, y = NULL, type = "l", col="blue")
+points(TsMSE,pch=10,col="red")
+lines(x=TsMSE, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Cross Validation
+library(DAAG) 
+library(ISLR)
+```
+
+```{r}
+CVlm(data = airquality, form.lm = formula(Ozone ~ Solar.R), m = 3, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+CVlm(data = airquality, form.lm = formula(Ozone ~ Solar.R), m = 5, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+#Bias/Variance Tradeoff
+set.seed(10)
+cv.err <- c()
+for (i in 1:10){
+  fit <- glm(Ozone ~ poly(Solar.R+Wind+Temp, i), data=airquality)
+  
+  cv.err[i] <- cv.glm(airquality, fit, K=5)$delta[1]
+}
+```
+
+```{r}
+cv.err
+```
+
+```{r}
+plot(x = 1:10, y = cv.err, type='b',xlab = "Polynomial Degree", ylab = "Cross Validation Error", main = "Bias / Variance Tradeoff")
+```
+
+```{r}
+#Subset Selection Method
+library(leaps)
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+
+```{r}
+library(ggvis)
+rsq <- as.data.frame(reg.summary$rsq)
+names(rsq) <- "R2"
+rsq %>% 
+  ggvis(x=~ c(1:nrow(rsq)), y=~R2 ) %>%
+  layer_points(fill = ~ R2 ) %>%
+  add_axis("y", title = "R2") %>% 
+  add_axis("x", title = "Number of variables")
+```

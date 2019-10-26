@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(boot)
+library(stats)
+```
+
+```{r}
+abalone <- read.csv('/home/apoorva/MLA_Final/Datasets/abelone.csv', header = F,strip.white = T)
+names <- c('Sex', 'Length', 'Diameter', 'Height', 'W_Weight', 'S_Weight', 'V_Weight', 'Shell_Weight', 'Rings')
+colnames(abalone) <- names
+```
+
+```{r}
+summary(abalone)
+```
+
+```{r}
+class(abalone$Sex)
+```
+
+```{r}
+abalone$Sex = as.numeric(abalone$Sex)
+summary(abalone)
+```
+
+```{r}
+TrsumSS <- 0
+TssumSS <- 0
+TrMSE <- 0
+TsMSE <- 0
+p <- 0
+i <- 1
+#set according to the number of rows in the database
+min_val <- 400
+```
+
+```{r}
+for (i in 1:10)
+{
+  p = min_val* i
+  TrainingData <- head(abalone,p)
+  lmodel <- lm(Rings ~ Sex+Length+Diameter+Height+W_Weight+S_Weight+V_Weight+Shell_Weight, data = TrainingData, x = T, y = T)
+  predictY <- predict(lmodel, TrainingData)
+  TestData <- head(abalone, -p)
+  Trerror <- abs(TrainingData$Rings - predictY)
+  Trsqrerror <- Trerror^2
+  TrsumSS[i]<-sum(Trsqrerror)
+  TrMSE[i]<- mean(Trsqrerror)
+  predictY <- predict(lmodel, TestData)
+  Tserror <- abs(TestData$Rings - predictY)
+  Tssqrerror <- Tserror^2
+  TssumSS[i] <- sum(Tssqrerror)
+  TsMSE[i] <- mean(Tssqrerror)
+}
+```
+
+```{r}
+#Least squared method
+TrsumSS
+TssumSS
+```
+
+```{r}
+plot(TrsumSS, main="effect of size of training and test error")
+lines(x=TrsumSS, y = NULL, type = "l", col="blue")
+points(TssumSS,pch=10,col="red")
+lines(x=TssumSS, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Training MSE and Testing MSE
+TrMSE
+TsMSE
+```
+
+```{r}
+plot(TrMSE, main="effect of size on training MSE(BLUE) and test MSE(RED)")
+lines(x=TrMSE, y = NULL, type = "l", col="blue")
+points(TsMSE,pch=10,col="red")
+lines(x=TsMSE, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Cross Validation
+library(DAAG) 
+library(ISLR)
+```
+
+```{r}
+CVlm(data = abalone, form.lm = formula(Rings ~ Length), m = 3, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+CVlm(data = abalone, form.lm = formula(Rings ~ Length), m = 5, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+#Bias/Variance Tradeoff
+set.seed(10)
+cv.err <- c()
+for (i in 1:10){
+  fit <- glm(Rings ~ poly(Sex+Length+Diameter+Height+W_Weight+S_Weight+V_Weight+Shell_Weight, i), data=abalone)
+  
+  cv.err[i] <- cv.glm(abalone, fit, K=5)$delta[1]
+}
+```
+
+```{r}
+cv.err
+```
+
+```{r}
+plot(x = 1:10, y = cv.err, type='b',xlab = "Polynomial Degree", ylab = "Cross Validation Error", main = "Bias / Variance Tradeoff")
+```
+
+```{r}
+#Subset Selection Method
+library(leaps)
+regfit.full = regsubsets(Rings ~ Sex+Length+Diameter+Height+W_Weight+S_Weight+V_Weight+Shell_Weight, data=abalone)
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+
+```{r}
+library(ggvis)
+rsq <- as.data.frame(reg.summary$rsq)
+names(rsq) <- "R2"
+rsq %>% 
+  ggvis(x=~ c(1:nrow(rsq)), y=~R2 ) %>%
+  layer_points(fill = ~ R2 ) %>%
+  add_axis("y", title = "R2") %>% 
+  add_axis("x", title = "Number of variables")
+```

@@ -1,0 +1,44 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+mydata<-read.csv("/home/apoorva/Downloads/MLA Assignments material/PCA/pca_gsp.csv")
+attach(mydata)
+```
+
+```{r}
+names(mydata)
+X <- cbind(Ag, Mining, Constr, Manuf, Manuf_nd, Transp, Comm, Energy, TradeW, TradeR, RE, Services, Govt)
+```
+
+```{r}
+summary(X)
+```
+
+```{r}
+cor(X)
+```
+
+```{r}
+pcal<-princomp(X, scores=TRUE, cor=TRUE)
+summary(pcal)
+```
+
+```{r}
+loadings(pcal)
+plot(pcal)
+```
+
+```{r}
+screeplot(pcal,type="line",main="Screen Plot")
+```
+
+```{r}
+biplot(pcal)
+```
+
+```{r}
+pcal$scores[1:10,]
+```

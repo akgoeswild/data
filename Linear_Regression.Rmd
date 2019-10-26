@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(boot)
+library(stats)
+```
+
+```{r}
+new_input <- read.csv('/home/apoorva/R_codes/input2.csv', header = F,strip.white = T)
+names <- c('s.id','p.id', 'y', 'x1', 'x2','x3', 'x4', 'x5', 'x6', 'x7')
+colnames(new_input) <- names
+```
+
+```{r}
+TrsumSS <- 0
+TssumSS <- 0
+TrMSE <- 0
+TsMSE <- 0
+p <- 0
+i <- 1
+```
+
+```{r}
+for (i in 1:10)
+{
+  p = 10* i
+  TrainingData <- head(new_input,p)
+  lmodel <- lm(y ~ x1+x2+x3+x4+x5+x6+x7, data = TrainingData, x = T, y = T)
+  predictY <- predict(lmodel, TrainingData)
+  TestData <- head(new_input, -p)
+  Trerror <- abs(TrainingData$y - predictY)
+  Trsqrerror <- Trerror^2
+  TrsumSS[i]<-sum(Trsqrerror)
+  TrMSE[i]<- mean(Trsqrerror)
+  predictY <- predict(lmodel, TestData)
+  Tserror <- abs(TestData$y - predictY)
+  Tssqrerror <- Tserror^2
+  TssumSS[i] <- sum(Tssqrerror)
+  TsMSE[i] <- mean(Tssqrerror)
+}
+```
+
+```{r}
+#Least squared method
+TrsumSS
+TssumSS
+```
+
+```{r}
+plot(TrsumSS, main="effect of size of training and test error")
+lines(x=TrsumSS, y = NULL, type = "l", col="blue")
+points(TssumSS,pch=10,col="red")
+lines(x=TssumSS, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Training MSE and Testing MSE
+TrMSE
+TsMSE
+```
+
+```{r}
+plot(TrMSE, main="effect of size on training MSE(BLUE) and test MSE(RED)")
+lines(x=TrMSE, y = NULL, type = "l", col="blue")
+points(TsMSE,pch=10,col="red")
+lines(x=TsMSE, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Cross Validation
+library(DAAG) 
+library(ISLR)
+```
+
+```{r}
+val.daag <- CVlm(data=new_input, m=2, form.lm = formula(y ~ x1+x2+x3+x4+x5+x6+x7))
+cverr = val.daag$y - val.daag$cvpred
+plot(x = new_input$s.id, y = cverr, type = 'l')
+```
+
+```{r}
+val.daag <- CVlm(data=new_input, m=4, form.lm = formula(y ~ x1+x2+x3+x4+x5+x6+x7))
+cverr1 = val.daag$y - val.daag$cvpred
+plot(x = new_input$s.id, y = cverr1, type = 'l')
+```
+
+```{r}
+#Bias/Variance Tradeoff
+set.seed(10)
+cv.err <- c()
+for (i in 1:10){
+  fit <- glm(y ~ poly(x1+x2+x3+x4+x5+x6+x7, i), data=new_input)
+  
+  cv.err[i] <- cv.glm(new_input, fit, K=5)$delta[1]
+}
+```
+
+```{r}
+cv.err
+```
+
+```{r}
+plot(x = 1:10, y = cv.err, type='b',xlab = "Polynomial Degree", ylab = "Cross Validation Error", main = "Bias / Variance Tradeoff")
+```
+
+```{r}
+#Subset Selection Method
+library(leaps)
+regfit.full = regsubsets(y ~ x1+x2+x3+x4+x5+x6+x7, data=new_input)
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+
+```{r}
+library(ggvis)
+rsq <- as.data.frame(reg.summary$rsq)
+names(rsq) <- "R2"
+rsq %>% 
+  ggvis(x=~ c(1:nrow(rsq)), y=~R2 ) %>%
+  layer_points(fill = ~ R2 ) %>%
+  add_axis("y", title = "R2") %>% 
+  add_axis("x", title = "Number of variables")
+```

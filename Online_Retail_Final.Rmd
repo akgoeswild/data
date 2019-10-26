@@ -1,0 +1,85 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(plyr)
+library(arules)
+
+online <- read.csv("/home/apoorva/MLA_Final/Datasets/Online_Retail.csv")
+items = ddply(online,c("InvoiceNo"), function(x)paste(x$Description, collapse = ","))
+head(items)
+```
+
+```{r}
+write.csv(items,"Items_List.csv",quote=FALSE, row.names = TRUE)
+#creating the baskets
+baskets = read.transactions("Items_List.csv", format='basket',sep=",")
+summary(baskets)
+```
+
+```{r}
+#generating the rules
+basket_rules = apriori(baskets,parameter = list(sup = 0.005, conf = 0.75))
+basket_rules2 = apriori(baskets,parameter = list(sup = 0.01, conf = 0.7,maxlen=3))
+
+basket_rules = sort(basket_rules, by='lift', decreasing = TRUE)
+basket_rules2 = sort(basket_rules2, by = 'confidence', decreasing = TRUE)
+```
+
+```{r}
+summary(basket_rules)
+inspect(basket_rules[1:10])
+```
+
+```{r}
+#visualizing the obtained rules
+library(arulesViz)
+```
+
+```{r}
+#scatterplot
+plot(basket_rules)
+```
+
+```{r}
+summary(basket_rules2)
+inspect(basket_rules2[1:10])
+```
+
+```{r}
+#graph
+plot(basket_rules2[1:10],method="graph")
+```
+
+
+```{r}
+basket_rules3 = apriori(baskets, parameter=list(supp=0.002,conf = 0.8),
+               appearance = list(default="lhs",rhs="COFFEE"),
+               control = list(verbose=F))
+basket_rules3 = sort(basket_rules3, decreasing=TRUE,by="confidence")
+summary(basket_rules3)
+inspect(basket_rules3[1:5])
+```
+
+```{r}
+plot(basket_rules3[1:5],method="graph")
+```
+
+```{r}
+basket_rules4 = apriori(baskets, parameter=list(supp=0.01,conf = 0.7),
+               appearance = list(default="rhs",lhs="SUGAR"),
+               control = list(verbose=F))
+basket_rules4 = sort(basket_rules4, decreasing=TRUE,by="confidence")
+summary(basket_rules4)
+inspect(basket_rules4)
+```
+
+```{r}
+plot(basket_rules4[1:2],method="graph")
+```

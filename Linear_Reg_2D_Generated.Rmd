@@ -1,0 +1,131 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+library(boot)
+library(stats)
+```
+
+```{r}
+size <- 2000             #length of random number vectors
+set.seed(2) 
+x1 <-runif(size)          # generate samples from uniform distribution (0.0, 1.0)
+x2 <-runif(size) 
+x3 <-runif(size)
+x4 <-runif(size)
+y <- runif(size)
+df <-data.frame(x1,x2,x3,x4,y)
+```
+
+```{r}
+TrsumSS <- 0
+TssumSS <- 0
+TrMSE <- 0
+TsMSE <- 0
+p <- 0
+i <- 1
+```
+
+```{r}
+for (i in 1:10)
+{
+  p = 150* i
+  TrainingData <- head(df,p)
+  lmodel <- lm(y ~ x1+x2+x3+x4, data = TrainingData, x = T, y = T)
+  predictY <- predict(lmodel, TrainingData)
+  TestData <- head(df, -p)
+  Trerror <- abs(TrainingData$y - predictY)
+  Trsqrerror <- Trerror^2
+  TrsumSS[i]<-sum(Trsqrerror)
+  TrMSE[i]<- mean(Trsqrerror)
+  predictY <- predict(lmodel, TestData)
+  Tserror <- abs(TestData$y - predictY)
+  Tssqrerror <- Tserror^2
+  TssumSS[i] <- sum(Tssqrerror)
+  TsMSE[i] <- mean(Tssqrerror)
+}
+```
+
+```{r}
+#Least squared method
+TrsumSS
+TssumSS
+```
+
+```{r}
+plot(TrsumSS, main="effect of size of training and test error")
+lines(x=TrsumSS, y = NULL, type = "l", col="blue")
+points(TssumSS,pch=10,col="red")
+lines(x=TssumSS, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Training MSE and Testing MSE
+TrMSE
+TsMSE
+```
+
+```{r}
+plot(TrMSE, main="effect of size on training MSE(BLUE) and test MSE(RED)")
+lines(x=TrMSE, y = NULL, type = "l", col="blue")
+points(TsMSE,pch=10,col="red")
+lines(x=TsMSE, y = NULL, type = "l", col="red")
+```
+
+```{r}
+#Cross Validation
+library(DAAG) 
+library(ISLR)
+```
+
+```{r}
+CVlm(data = df, form.lm = formula(y ~ x1), m = 3, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+CVlm(data = df, form.lm = formula(y ~ x1), m = 5, dots = FALSE, seed = 29, plotit = c("Observed","Residual"), main="Small symbols show cross-validation predicted values", legend.pos="topleft", printit = TRUE)
+```
+
+```{r}
+#Bias/Variance Tradeoff
+set.seed(10)
+cv.err <- c()
+for (i in 1:10){
+  fit <- glm(y ~ poly(x1+x2+x3+x4, i), data=df)
+  
+  cv.err[i] <- cv.glm(df, fit, K=5)$delta[1]
+}
+```
+
+```{r}
+cv.err
+```
+
+```{r}
+plot(x = 1:10, y = cv.err, type='b',xlab = "Polynomial Degree", ylab = "Cross Validation Error", main = "Bias / Variance Tradeoff")
+```
+
+```{r}
+#Subset Selection Method
+library(leaps)
+regfit.full = regsubsets(y ~ x1+x2+x3+x4, data=df)
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+
+```{r}
+library(ggvis)
+rsq <- as.data.frame(reg.summary$rsq)
+names(rsq) <- "R2"
+rsq %>% 
+  ggvis(x=~ c(1:nrow(rsq)), y=~R2 ) %>%
+  layer_points(fill = ~ R2 ) %>%
+  add_axis("y", title = "R2") %>% 
+  add_axis("x", title = "Number of variables")
+```

@@ -1,0 +1,76 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# Load the libraries
+library(arules)
+library(arulesViz)
+library(datasets)
+```
+
+```{r}
+# Load the data set
+data(Groceries)
+
+#Lets explore the data before we make any rules:
+
+# Create an item frequency plot for the top 20 items
+itemFrequencyPlot(Groceries,topN=20,type="absolute")
+```
+
+```{r}
+# You will always have to pass the minimum required support and confidence.
+    #We set the minimum support to 0.001
+    #We set the minimum confidence of 0.8
+    #We then show the top 5 rules
+# Get the rules
+rules <- apriori(Groceries, parameter = list(supp = 0.001, conf = 0.8))
+```
+
+```{r}
+# Show the top 5 rules, but only 2 digits
+options(digits=2)
+inspect(rules[1:5])
+
+rules<-sort(rules, by="confidence", decreasing=TRUE)
+rules <- apriori(Groceries, parameter = list(supp = 0.001, conf = 0.8,maxlen=3))
+```
+
+```{r}
+subset.matrix <- is.subset(rules, rules)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+redundant <- colSums(subset.matrix, na.rm=T) >= 1
+rules.pruned <- rules[!redundant]
+rules<-rules.pruned
+```
+
+```{r}
+rules<-apriori(data=Groceries, parameter=list(supp=0.001,conf = 0.08), 
+               appearance = list(default="lhs",rhs="whole milk"),
+               control = list(verbose=F))
+rules<-sort(rules, decreasing=TRUE,by="confidence")
+inspect(rules[1:5])
+```
+
+```{r}
+rules<-apriori(data=Groceries, parameter=list(supp=0.001,conf = 0.15,minlen=2), 
+               appearance = list(default="rhs",lhs="whole milk"),
+               control = list(verbose=F))
+rules<-sort(rules, decreasing=TRUE,by="confidence")
+inspect(rules[1:5])
+```
+
+```{r}
+plot(rules,method="graph",interactive=TRUE,shading=NA)
+```
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

@@ -1,0 +1,52 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+wine_df<-read.csv("/home/apoorva/MLA_Final/Datasets/wine.csv")
+attach(wine_df)
+```
+
+```{r}
+col <- c('Class', 'Alcohol', 'Malic Acid', 'Ash', 'Alcalinity of ash', 'Magnesium', 'Tot_phenols', 'Flavanoids', 'Non_flavanoid_phenols', 'Proanthocyanins', 'Colour', 'Hue', 'OD280/OD315', 'Proline')
+colnames(wine_df) <- col
+head(wine_df)
+```
+
+```{r}
+summary(wine_df)
+```
+
+```{r}
+cor(wine_df)
+```
+
+```{r}
+pcal<-princomp(wine_df, scores=TRUE, cor=TRUE)
+summary(pcal)
+```
+
+```{r}
+loadings(pcal)
+```
+
+```{r}
+plot(pcal)
+```
+
+```{r}
+screeplot(pcal,type="line",main="Screen Plot")
+```
+
+```{r}
+biplot(pcal)
+```
+
+```{r}
+pcal$scores[1:10,]
+```
